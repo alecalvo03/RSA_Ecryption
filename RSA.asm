@@ -2,7 +2,7 @@
 
 section	.data
     bignum1 dq 2, 2, 0, 0;0xFFFFFFFFFFAFFFFF, 0xFFFFFBFFFFFFFFFF, 0, 0
-    bignum2 dq 4, 6, 0, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
+    bignum2 dq 4, 6, 0x7568d, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
     mul1    dq 0xFFFFFFFFFFAFFFFF, 0xFFFFFBFFFFFFFFFF, 0xFFF3FFFFFFFFFFFF, 0xFFFFF1FFFFFFFFFF
     mul2    dq 0xFFFFFF4FFFFFFFFF, 0xFFFFFFFFFF6FFFFF, 0xFFFFFFFFFF2FFFFF, 0xFFF7FFFFFFFFFFFF
     mulr    dq 0, 0, 0, 0
@@ -13,22 +13,19 @@ section	.data
     divQc   dq 0, 0, 0, 0
     divM    dq 0
     divNo   dq 0, 0, 0, 0
+    divNeg  dq 0
     
     
 
 
 section .text
-	global main
+	global CMAIN
 
-main:
+CMAIN:
     mov rbp, rsp; for correct debugging
+    
 
     call bigdiv
-    
-    mov rax, qword[mulr]
-    mov rbx, qword[mulr+8]
-    mov rcx, qword[mulr+16]
-    mov rdx, qword[mulr+24]
     
     PRINT_HEX 8, bignum2+24
     PRINT_HEX 8, bignum2+16
@@ -36,6 +33,14 @@ main:
     PRINT_HEX 8, bignum2
     NEWLINE
 
+    PRINT_HEX 8, bignum1+24
+    PRINT_HEX 8, bignum1+16
+    PRINT_HEX 8, bignum1+8
+    PRINT_HEX 8, bignum1
+    NEWLINE
+    
+    PRINT_HEX 8, divNeg
+    NEWLINE
 
 bigadd:                                 ;bignum2 = bignum2 + bignum1
     mov rax, qword [bignum1]
@@ -195,6 +200,18 @@ divloop:
 
     mov rcx, qword[divM]
     
+    PRINT_HEX 8, divD+24
+    PRINT_HEX 8, divD+16
+    PRINT_HEX 8, divD+8
+    PRINT_HEX 8, divD
+    NEWLINE
+    
+    PRINT_HEX 8, divN+24
+    PRINT_HEX 8, divN+16
+    PRINT_HEX 8, divN+8
+    PRINT_HEX 8, divN
+    NEWLINE
+    
     ;Divs each digit and concatenates modulus on rdx
     xor rdx, rdx
     mov rax, qword[divN+24]
@@ -250,13 +267,13 @@ shifteddivQ:
     
     ;Stores divQ shifted
     mov rax, qword[divQ]
-    mov qword[bignum2], rax
+    mov qword[bignum1], rax
     mov rax, qword[divQ+8]
-    mov qword[bignum2+8], rax
+    mov qword[bignum1+8], rax
     mov rax, qword[divQ+16]
-    mov qword[bignum2+16], rax
+    mov qword[bignum1+16], rax
     mov rax, qword[divQ+24]
-    mov qword[bignum2+24], rax
+    mov qword[bignum1+24], rax
     
     PRINT_HEX 8, divQ+24
     PRINT_HEX 8, divQ+16
@@ -265,21 +282,28 @@ shifteddivQ:
     NEWLINE
     
     mov rax, qword[divQc]
-    mov qword[bignum1], rax
+    mov qword[bignum2], rax
     mov rax, qword[divQc+8]
-    mov qword[bignum1+8], rax
+    mov qword[bignum2+8], rax
     mov rax, qword[divQc+16]
-    mov qword[bignum1+16], rax
+    mov qword[bignum2+16], rax
     mov rax, qword[divQc+24]
-    mov qword[bignum1+24], rax
-    call bigadd
-    
+    mov qword[bignum2+24], rax
+    cmp qword[divNeg], 1
+    jz negative
+    call bigadd ;Adds Q and previous Q (Qc)
+    jmp notnegative
+negative:
+    call bigsub ;Substracts Q and previous Q (Qc)
+notnegative:
+
     PRINT_HEX 8, bignum2+24
     PRINT_HEX 8, bignum2+16
     PRINT_HEX 8, bignum2+8
     PRINT_HEX 8, bignum2
     NEWLINE
     
+    ;Stores result in Qc
     mov rax, qword[bignum2]
     mov qword[divQc], rax
     mov rax, qword[bignum2+8]
@@ -338,7 +362,51 @@ shifteddivQ:
     PRINT_HEX 8, bignum2
     NEWLINE
     
+    ;Stores new N
+    ;mov rax, qword[bignum2]
+    ;mov qword[divN], rax
+    ;mov rax, qword[bignum2+8]
+    ;mov qword[divN+8], rax
+    ;mov rax, qword[bignum2+16]
+    ;mov qword[divN+16], rax
+    ;mov rax, qword[bignum2+24]
+    ;mov qword[divN+24], rax
     
+    mov qword[bignum1+24], 0
+    mov qword[bignum1+16], 0
+    mov qword[bignum1+8], 0
+    mov qword[bignum1], 0
+    mov qword[divNeg], 0
+    
+    ;abs(bignum2)
+    cmp qword[bignum2+24],0
+    jge absolut
+    mov qword[divNeg], 1
+    mov qword[bignum1+24], -1
+    mov qword[bignum1+16], -1
+    mov qword[bignum1+8], -1
+    mov qword[bignum1], -1
+    
+absolut: 
+
+    call bigadd
+    
+    mov rax, qword[bignum1]
+    xor qword[bignum2], rax
+    mov rax, qword[bignum1+8]
+    xor qword[bignum2+8], rax
+    mov rax, qword[bignum1+16]
+    xor qword[bignum2+16], rax
+    mov rax, qword[bignum1+24]
+    xor qword[bignum2+24], rax
+    
+    PRINT_HEX 8, bignum2+24
+    PRINT_HEX 8, bignum2+16
+    PRINT_HEX 8, bignum2+8
+    PRINT_HEX 8, bignum2
+    NEWLINE
+    
+    ;Stores new N
     mov rax, qword[bignum2]
     mov qword[divN], rax
     mov rax, qword[bignum2+8]
@@ -347,29 +415,77 @@ shifteddivQ:
     mov qword[divN+16], rax
     mov rax, qword[bignum2+24]
     mov qword[divN+24], rax
-    
+       
     ;compares R and D
     mov rax, qword[divD+24]
     cmp qword[bignum2+24], rax
-    jg divloop
+    jl enddiv
     mov rax, qword[divD+16]
     cmp qword[bignum2+16], rax
-    jg divloop
+    jl enddiv
     mov rax, qword[divD+8]
     cmp qword[bignum2+8], rax
-    jg divloop
+    jl enddiv
     mov rax, qword[divD]
     cmp qword[bignum2], rax
-    jge divloop
+    jl enddiv
+    jmp divloop
     
+enddiv:
+
     
-    mov rax, qword[divQ]
+    cmp qword[divNeg], 0
+    jz divret
+    
+    mov rax, qword[bignum2]
+    mov qword[bignum1], rax
+    mov rax, qword[bignum2+8]
+    mov qword[bignum1+8], rax
+    mov rax, qword[bignum2+16]
+    mov qword[bignum1+16], rax
+    mov rax, qword[bignum2+24]
+    mov qword[bignum1+24], rax
+    
+    mov rax, qword[divD]
     mov qword[bignum2], rax
-    mov rax, qword[divQ+8]
+    mov rax, qword[divD+8]
     mov qword[bignum2+8], rax
-    mov rax, qword[divQ+16]
+    mov rax, qword[divD+16]
     mov qword[bignum2+16], rax
-    mov rax, qword[divQ+24]
+    mov rax, qword[divD+24]
+    mov qword[bignum2+24], rax
+    
+    call bigsub
+    
+    ;Add 1 to Qc
+    mov rax, 1
+    sub qword[divQc], rax
+    mov rax, 0
+    sbb qword[divQc+8], rax
+    sbb qword[divQc+16], rax
+    sbb qword[divQc+24], rax
+    
+    
+
+    
+divret:
+
+    mov rax, qword[bignum2]
+    mov qword[bignum1], rax
+    mov rax, qword[bignum2+8]
+    mov qword[bignum1+8], rax
+    mov rax, qword[bignum2+16]
+    mov qword[bignum1+16], rax
+    mov rax, qword[bignum2+24]
+    mov qword[bignum1+24], rax
+    
+    mov rax, qword[divQc]
+    mov qword[bignum2], rax
+    mov rax, qword[divQc+8]
+    mov qword[bignum2+8], rax
+    mov rax, qword[divQc+16]
+    mov qword[bignum2+16], rax
+    mov rax, qword[divQc+24]
     mov qword[bignum2+24], rax
     
     ret
