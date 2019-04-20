@@ -1,21 +1,61 @@
 %include "io64.inc"
 
-section	.data
-    bignum1 dq 2, 2, 0, 0;0xFFFFFFFFFFAFFFFF, 0xFFFFFBFFFFFFFFFF, 0, 0
-    bignum2 dq 4, 6, 0x7568d, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
-    mul1    dq 0xFFFFFFFFFFAFFFFF, 0xFFFFFBFFFFFFFFFF, 0xFFF3FFFFFFFFFFFF, 0xFFFFF1FFFFFFFFFF
-    mul2    dq 0xFFFFFF4FFFFFFFFF, 0xFFFFFFFFFF6FFFFF, 0xFFFFFFFFFF2FFFFF, 0xFFF7FFFFFFFFFFFF
-    mulr    dq 0, 0, 0, 0
 
-    divD    dq 0, 0, 0, 0
-    divN    dq 0, 0, 0, 0
-    divQ    dq 0, 0, 0, 0
-    divQc   dq 0, 0, 0, 0
-    divM    dq 0
-    divNo   dq 0, 0, 0, 0
-    divNeg  dq 0
+extern exit
+
+
+section	.data
+    bignum1     dq      2, 2, 2, 2, 0, 0, 0, 0;0xFFFFFFFFFFAFFFFF, 0xFFFFFBFFFFFFFFFF, 0, 0
+    bignum2     dq      4, 3, 7, 8, 0, 0, 0, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
+    mulr        dq      3, 5, 1, 0, 0, 0, 0, 0 ;000000000000000
+    
+    test1       dq      0xed7fb5a6961790f1, 0x2, 0, 0, 0, 0, 0, 0
+    test2       dq      3, 1, 0, 0, 0, 0, 0, 0
+    test3       dq      0, 0, 0, 0, 0, 0, 0, 0
+    
+    expmod      dq      0
+    
+    size        dq      56
     
     
+section .bss
+    clBignum    resq    1
+    
+    addD        resq    1
+    addS        resq    1
+    
+    subD        resq    1
+    subS        resq    1
+    
+    mulD        resq    1
+    mul1        resq    1
+    mul2        resq    1
+    mulTem      resq    8
+    
+    magV        resq    1
+    
+    copyD       resq    1
+    copyS       resq    1
+
+    divD        resq    1           ;Denominator pointer
+    divN        resq    1           ;Numerator pinter
+    divQ        resq    8           ;Quotient vector
+    divR        resq    8           ;Residue vector
+    divQpiv     resq    8           ;Vector to pivot Q for shifting
+    divQc       resq    8           ;Quotient count vector
+    divM        resq    1           ;Magnitude
+    divNN       resq    8           ;Changing Numerator vector
+    divNeg      resq    1           ;Flag if residue is negative
+    divNo       resq    1
+    divQD       resq    8
+    divAbs1     resq    8
+    divAbs2     resq    8
+    
+    expmodX     resq    1
+    expmodK     resq    1
+    expmodN     resq    1
+    expmodR     resq    8
+    expmodTR    resq    8
 
 
 section .text
@@ -24,472 +64,580 @@ section .text
 CMAIN:
     mov rbp, rsp; for correct debugging
     
-
+    mov qword[expmodX], bignum1
+    mov qword[expmodK], bignum2
+    mov qword[expmodN], mulr
+    call bigexpmod
+    
+    PRINT_HEX 8, expmodR+56
+    NEWLINE
+    PRINT_HEX 8, expmodR+48
+    NEWLINE
+    PRINT_HEX 8, expmodR+40
+    NEWLINE
+    PRINT_HEX 8, expmodR+32
+    NEWLINE
+    PRINT_HEX 8, expmodR+24
+    NEWLINE
+    PRINT_HEX 8, expmodR+16
+    NEWLINE
+    PRINT_HEX 8, expmodR+8
+    NEWLINE
+    PRINT_HEX 8, expmodR
+    NEWLINE
+    
+    mov qword[mulD], test3
+    mov qword[mul1], test1
+    mov qword[mul2], test1
+    call bigmul
+    
+    mov qword[copyD], test1
+    mov qword[copyS], test3
+    call copyvector
+    
+    PRINT_HEX 8, test1+24
+    PRINT_HEX 8, test1+16
+    PRINT_HEX 8, test1+8
+    PRINT_HEX 8, test1
+    NEWLINE
+    
+    mov qword[divN], test1
+    mov qword[divD], test2
     call bigdiv
     
-    PRINT_HEX 8, bignum2+24
-    PRINT_HEX 8, bignum2+16
-    PRINT_HEX 8, bignum2+8
-    PRINT_HEX 8, bignum2
-    NEWLINE
-
-    PRINT_HEX 8, bignum1+24
-    PRINT_HEX 8, bignum1+16
-    PRINT_HEX 8, bignum1+8
-    PRINT_HEX 8, bignum1
+    PRINT_HEX 8, divQc+24
+    PRINT_HEX 8, divQc+16
+    PRINT_HEX 8, divQc+8
+    PRINT_HEX 8, divQc
     NEWLINE
     
-    PRINT_HEX 8, divNeg
+    PRINT_HEX 8, divR+24
+    PRINT_HEX 8, divR+16
+    PRINT_HEX 8, divR+8
+    PRINT_HEX 8, divR
     NEWLINE
+    
+    
+    mov qword[expmodX], bignum1
+    mov qword[expmodK], bignum2
+    mov qword[expmodN], mulr
+    call bigexpmod
+    
+    PRINT_HEX 8, expmodR+56
+    NEWLINE
+    PRINT_HEX 8, expmodR+48
+    NEWLINE
+    PRINT_HEX 8, expmodR+40
+    NEWLINE
+    PRINT_HEX 8, expmodR+32
+    NEWLINE
+    PRINT_HEX 8, expmodR+24
+    NEWLINE
+    PRINT_HEX 8, expmodR+16
+    NEWLINE
+    PRINT_HEX 8, expmodR+8
+    NEWLINE
+    PRINT_HEX 8, expmodR
+    NEWLINE
+    
+    call exit
+    
+clearbignum:
+    push rcx
+    push r10
+    xor rcx, rcx
+    mov r10, [clBignum]             ;stores pointer
+    
+clearbignumloop:
+    mov qword[r10+rcx], 0
+    cmp rcx, qword[size]
+    jz clearbignumret
+    add rcx, 8
+    jmp clearbignumloop
+    
+clearbignumret:
+    pop r10
+    pop rcx
+    ret
+    
 
 bigadd:                                 ;bignum2 = bignum2 + bignum1
-    mov rax, qword [bignum1]
-    add qword [bignum2], rax
-    mov rax, qword [bignum1+8]
-    adc qword [bignum2+8], rax
-    mov rax, qword [bignum1+16]
-    adc qword [bignum2+16], rax
-    mov rax, qword [bignum1+24]
-    adc qword [bignum2+24], rax
+    push rcx
+    push rbx
+    push r10
+    push r11
+    clc
+    xor rcx, rcx
+    xor rbx, rbx
+    mov r10, [addD]                 ;stores destination pointer
+    mov r11, [addS]                 ;stores source pointer
+    
+    
+bigaddloop:
+    cmp rbx, 0
+    jz notcarryadd
+    xor rbx, rbx
+    stc
+    
+notcarryadd:
+    mov rax, qword[r11+rcx]
+    adc qword[r10+rcx], rax
+    adc rbx, 0
+    cmp rcx, qword[size]
+    jz bigaddret
+    add rcx, 8
+    jmp bigaddloop
+    
+bigaddret:
+
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
+    ret
+    
+    
+    
+bigsub:                                 ;subD = subD - subS
+    push rcx
+    push rbx
+    push r10
+    push r11
+    clc
+    xor rcx, rcx
+    xor rbx, rbx
+    mov r10, [subD]                 ;stores destination pointer
+    mov r11, [subS]                 ;stores source pointer
+    
+    
+bigsubloop:
+    cmp rbx, 0
+    jz notcarrysub
+    xor rbx, rbx
+    stc
+    
+notcarrysub:
+    mov rax, qword[r11+rcx]
+    sbb qword[r10+rcx], rax
+    sbb rbx, 0
+    cmp rcx, qword[size]
+    jz bigsubret
+    add rcx, 8
+    jmp bigsubloop
+    
+bigsubret:
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
     ret
 
-bigsub:                                 ;bignum2 = bignum2 - bignum1
-    mov rax, qword [bignum1]
-    sub qword [bignum2], rax
-    mov rax, qword [bignum1+8]
-    sbb qword [bignum2+8], rax
-    mov rax, qword [bignum1+16]
-    sbb qword [bignum2+16], rax
-    mov rax, qword [bignum1+24]
-    sbb qword [bignum2+24], rax
-    ret
+
 
 bigmul:
-    mov qword[mulr], 0
-    mov qword[mulr+8], 0
-    mov qword[mulr+16], 0
-    mov qword[mulr+24], 0
+    push rcx
+    push rbx
+    push r10
+    push r11
+    push r12
+    push r13
+    mov r10, [mulD]                ;stores destination pointer
+    mov r11, [mul1]                 ;stores source 1 pointer
+    mov r12, [mul2]                 ;stores source 2 pointer
+    xor rcx, rcx ;rcx = 0
 
-    mov rax, qword[bignum1]		                 ; move mul1[0] to rax
-    mul qword[bignum2]				; rdx:rax = mlu1[0]*mul2[0]
+    mov qword[clBignum], r10
+    call clearbignum
     
-    mov qword[mulr], rax			        ; move rax to mul3[0]
-    mov qword[mulr+8], rdx		        ; move rdx to mul3[1]
+    mov qword[clBignum], mulTem
+    call clearbignum
     
-    mov rax, qword [bignum1]		        ; move mul1[0] to rax
-    mul qword [bignum2+8]		                ; rdx:rax = mul1[0]*mul2[1]
+    xor rcx, rcx
+    xor rbx, rbx
     
-    add qword[mulr+8], rax
-    adc qword[mulr+16], rdx
-    adc qword[mulr+24], 0
-    
-    mov rax, qword [bignum1]		        ; move mul1[0] to rax
-    mul qword [bignum2+16]				; rdx:rax = mul1[0]*mul2[2]
-    
-    add qword[mulr+16], rax
-    adc qword[mulr+24], rdx
-    
-    mov rax, qword [bignum1]		        ; move mul1[0] to rax
-    mul qword [bignum2+24]			        ; rdx:rax = mul1[0]*mul2[3]
-    
-    add qword[mulr+24], rax
-    
+bigmulloop:
 
-    mov rax, qword [bignum1+8]		        ; move mul1[1] to rax
-    mul qword [bignum2]		                ; rdx:rax = mul1[1]*mul2[0]
+    mov rax, qword[r11+rcx]
+    mul qword[r12+rbx]
     
-    add qword[mulr+8], rax
-    adc qword[mulr+16], rdx
-    adc qword[mulr+24], 0
+    mov qword[clBignum], mulTem
+    call clearbignum
+    mov r13, mulTem               ;Stores pointer to temporary vector
     
-    mov rax, qword [bignum1+8]		        ; move mul1[1] to rax
-    mul qword [bignum2+8]				; rdx:rax = mul1[1]*mul2[1]
+    push rcx
+    add rcx, rbx
     
-    add qword[mulr+16], rax
-    adc qword[mulr+24], rdx
+    mov qword[r13+rcx], rax
     
-    mov rax, qword [bignum1+8]		        ; move mul1[1] to rax
-    mul qword [bignum2+16]			        ; rdx:rax = mul1[1]*mul2[2]
+    ;Check is rcx+rbx is less that the size
+    cmp rcx, qword[size]
+    jz bigmullimit
     
-    add qword[mulr+24], rax
+    mov qword[r13+rcx+8], rdx
     
+bigmullimit:
+    mov qword[addD], r10
+    mov qword[addS], r13
+    call bigadd
 
-    mov rax, qword [bignum1+16]		        ; move mul1[2] to rax
-    mul qword [bignum2]				; rdx:rax = mul1[2]*mul2[0]
+    ;Check is rcx+rbx is less that the size
+    cmp rcx, qword[size]
+    pop rcx
+    je bigmullimit2
+    add rbx, 8
+    jmp bigmulloop
     
-    add qword[mulr+16], rax
-    adc qword[mulr+24], rdx
-    
-    mov rax, qword [bignum1+16]		        ; move mul1[2] to rax
-    mul qword [bignum2+8]			        ; rdx:rax = mul1[2]*mul2[1]
-    
-    add qword[mulr+24], rax
-    
-
-    mov rax, qword [bignum1+24]		        ; move mul1[3] to rax
-    mul qword [bignum2]			        ; rdx:rax = mul1[3]*mul2[0]
-    
-    add qword[mulr+24], rax
+bigmullimit2:
+    cmp rcx, qword[size]
+    je bigmulret
+    add rcx, 8
+    xor rbx, rbx
+    jmp bigmulloop
     
     
-    mov rax, qword[mulr]
-    mov qword[bignum2], rax
-    mov rax, qword[mulr+8]
-    mov qword[bignum2+8], rax
-    mov rax, qword[mulr+16]
-    mov qword[bignum2+16], rax
-    mov rax, qword[mulr+24]
-    mov qword[bignum2+24], rax
     
+bigmulret:
+    pop r13
+    pop r12
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
     ret
+  
+  
+copyvector:
+    push rcx
+    push r10
+    push r11
+    mov r10, [copyD]
+    mov r11, [copyS]
+    mov rcx, qword[size]
+    
+copyloop:
+    mov rax, qword[r11+rcx]
+    mov qword[r10+rcx], rax
+    cmp rcx, 0
+    je copyret
+    sub rcx, 8
+    jmp copyloop
+    
+copyret:
+    pop r11
+    pop r10
+    pop rcx
+    ret
+    
+  
 
 getmagnitude:
-    mov rax, 24
-    mov rbx, qword[divD+rax]
-    cmp qword[divD+rax], 0
+    push r10
+    mov r10, [magV]
+    mov rax, qword[size]
+    
+magnitudeloop:
+    cmp qword[r10+rax], 0
     jne donemagnitude
-    mov rax, 16
-    cmp qword[divD+rax], 0
-    jne donemagnitude
-    mov rax, 8
-    cmp qword[divD+rax], 0
-    jne donemagnitude
-    mov rax, 0
+    sub rax, 8
+    jmp magnitudeloop
+    
 donemagnitude:
     mov qword[divM], rax
+    pop r10
     ret
     
 
 ;;Progress
-bigdiv:                                         ;bignum2 = bignum2 / bignum1
-    mov rax, qword[bignum1]
-    mov qword[divD], rax
-    mov rax, qword[bignum1+8]
-    mov qword[divD+8], rax
-    mov rax, qword[bignum1+16]
-    mov qword[divD+16], rax
-    mov rax, qword[bignum1+24]
-    mov qword[divD+24], rax
+bigdiv:                                         ;bignum2 = bignum2 / bignum1, bignum1 = bignum2 % bignum1
+    push rcx
+    push rbx
+    push r10
+    push r11
     
-    mov rax, qword[bignum2]
-    mov qword[divN], rax
-    mov qword[divNo], rax
-    mov rax, qword[bignum2+8]
-    mov qword[divN+8], rax
-    mov qword[divNo+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[divN+16], rax
-    mov qword[divNo+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[divN+24], rax
-    mov qword[divNo+24], rax
+    mov r10, [divD]
+    mov r11, [divN]
     
-    mov qword[divQc], 0
-    mov qword[divQc+8], 0
-    mov qword[divQc+16], 0
-    mov qword[divQc+24], 0
+    mov qword[copyD], divNN             ;Saves original numerator
+    mov qword[copyS], r11
+    call copyvector
     
-    mov qword[divQ], 0
-    mov qword[divQ+8], 0
-    mov qword[divQ+16], 0
-    mov qword[divQ+24], 0
+    mov qword[divNeg], 0
     
+    mov qword[clBignum], divQc
+    call clearbignum
+    
+    mov qword[clBignum], divQ
+    call clearbignum
+    
+    mov qword[clBignum], divR
+    call clearbignum
+    
+    mov qword[magV], r10
     call getmagnitude
     
 divloop:
-
     mov rcx, qword[divM]
-    
-    PRINT_HEX 8, divD+24
-    PRINT_HEX 8, divD+16
-    PRINT_HEX 8, divD+8
-    PRINT_HEX 8, divD
-    NEWLINE
-    
-    PRINT_HEX 8, divN+24
-    PRINT_HEX 8, divN+16
-    PRINT_HEX 8, divN+8
-    PRINT_HEX 8, divN
-    NEWLINE
+    mov rbx, qword[size]
+    xor rdx, rdx
     
     ;Divs each digit and concatenates modulus on rdx
-    xor rdx, rdx
-    mov rax, qword[divN+24]
-    div qword[divD+rcx]
-    mov qword[divQ+24], rax
-    cmp rcx, 24
+divloop1:
+    mov rax, qword[divNN+rbx]
+    div qword[r10+rcx]
+    mov qword[divQ+rbx], rax
+    cmp rcx, rbx
     jz divdone
-    
-    mov rax, qword[divN+16]
-    div qword[divD+rcx]
-    mov qword[divQ+16], rax
-    cmp rcx, 16
-    jz divdone
-    
-    mov rax, qword[divN+8]
-    div qword[divD+rcx]
-    mov qword[divQ+8], rax
-    cmp rcx, 8
-    jz divdone
-    
-    mov rax, qword[divN]
-    div qword[divD+rcx]
-    mov qword[divQ], rax
+    sub rbx, 8
+    jmp divloop1
     
 divdone:
 
-    mov rbx, 24 ;initial condition
-    cmp rcx, 0
+    mov rbx, qword[divM] ;initial condition
+    cmp qword[divM], 0
     jz shifteddivQ
     
-    mov qword[bignum1+24], 0
-    mov qword[bignum1+16], 0
-    mov qword[bignum1+8], 0
-    mov qword[bignum1], 0
+    mov qword[clBignum], divQpiv
+    call clearbignum
     
 shiftdivQ: ;Shift divQ and stores in bignum1
     mov rax, qword[divQ+rbx]
-    sub rbx, rcx
-    mov qword[bignum1+rbx], rax
-    cmp rbx, rcx
-    jge shiftdivQ
+    push rbx
+    sub rbx, qword[divM]
+    mov qword[divQpiv+rbx], rax
+    pop rbx
+    add rbx, 8
+    cmp rbx, qword[size]
+    jle shiftdivQ
     
-    mov rax, qword[bignum1]
-    mov qword[divQ], rax
-    mov rax, qword[bignum1+8]
-    mov qword[divQ+8], rax
-    mov rax, qword[bignum1+16]
-    mov qword[divQ+16], rax
-    mov rax, qword[bignum1+24]
-    mov qword[divQ+24], rax
+    mov qword[copyD], divQ
+    mov qword[copyS], divQpiv
+    call copyvector
     
-shifteddivQ:
-    
-    ;Stores divQ shifted
-    mov rax, qword[divQ]
-    mov qword[bignum1], rax
-    mov rax, qword[divQ+8]
-    mov qword[bignum1+8], rax
-    mov rax, qword[divQ+16]
-    mov qword[bignum1+16], rax
-    mov rax, qword[divQ+24]
-    mov qword[bignum1+24], rax
-    
-    PRINT_HEX 8, divQ+24
-    PRINT_HEX 8, divQ+16
-    PRINT_HEX 8, divQ+8
-    PRINT_HEX 8, divQ
-    NEWLINE
-    
-    mov rax, qword[divQc]
-    mov qword[bignum2], rax
-    mov rax, qword[divQc+8]
-    mov qword[bignum2+8], rax
-    mov rax, qword[divQc+16]
-    mov qword[bignum2+16], rax
-    mov rax, qword[divQc+24]
-    mov qword[bignum2+24], rax
+shifteddivQ:    
     cmp qword[divNeg], 1
+    
     jz negative
+    mov qword[addD], divQc
+    mov qword[addS], divQ
     call bigadd ;Adds Q and previous Q (Qc)
     jmp notnegative
+    
 negative:
+    mov qword[subD], divQc
+    mov qword[subS], divQ
     call bigsub ;Substracts Q and previous Q (Qc)
+    
 notnegative:
 
-    PRINT_HEX 8, bignum2+24
-    PRINT_HEX 8, bignum2+16
-    PRINT_HEX 8, bignum2+8
-    PRINT_HEX 8, bignum2
-    NEWLINE
-    
-    ;Stores result in Qc
-    mov rax, qword[bignum2]
-    mov qword[divQc], rax
-    mov rax, qword[bignum2+8]
-    mov qword[divQc+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[divQc+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[divQc+24], rax
-    
-    ;stores divD in bignum2
-    mov rax, qword[divD]
-    mov qword[bignum1], rax
-    mov rax, qword[divD+8]
-    mov qword[bignum1+8], rax
-    mov rax, qword[divD+16]
-    mov qword[bignum1+16], rax
-    mov rax, qword[divD+24]
-    mov qword[bignum1+24], rax
-    
-    PRINT_HEX 8, bignum1+24
-    PRINT_HEX 8, bignum1+16
-    PRINT_HEX 8, bignum1+8
-    PRINT_HEX 8, bignum1
-    NEWLINE
-    
+    mov qword[mulD], divQD
+    mov qword[mul1], divQc
+    mov qword[mul2], r10
     call bigmul
-    
-    PRINT_HEX 8, bignum2+24
-    PRINT_HEX 8, bignum2+16
-    PRINT_HEX 8, bignum2+8
-    PRINT_HEX 8, bignum2
-    NEWLINE
-    
-    mov rax, qword[bignum2]
-    mov qword[bignum1], rax
-    mov rax, qword[bignum2+8]
-    mov qword[bignum1+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[bignum1+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[bignum1+24], rax
-    
-    mov rax, qword[divNo]
-    mov qword[bignum2], rax
-    mov rax, qword[divNo+8]
-    mov qword[bignum2+8], rax
-    mov rax, qword[divNo+16]
-    mov qword[bignum2+16], rax
-    mov rax, qword[divNo+24]
-    mov qword[bignum2+24], rax
+
+    mov qword[copyD], divR
+    mov qword[copyS], r11
+    call copyvector
+
+    mov qword[subD], divR
+    mov qword[subS], divQD
     call bigsub
-    
-    PRINT_HEX 8, bignum2+24
-    PRINT_HEX 8, bignum2+16
-    PRINT_HEX 8, bignum2+8
-    PRINT_HEX 8, bignum2
-    NEWLINE
-    
-    ;Stores new N
-    ;mov rax, qword[bignum2]
-    ;mov qword[divN], rax
-    ;mov rax, qword[bignum2+8]
-    ;mov qword[divN+8], rax
-    ;mov rax, qword[bignum2+16]
-    ;mov qword[divN+16], rax
-    ;mov rax, qword[bignum2+24]
-    ;mov qword[divN+24], rax
-    
-    mov qword[bignum1+24], 0
-    mov qword[bignum1+16], 0
-    mov qword[bignum1+8], 0
-    mov qword[bignum1], 0
+
     mov qword[divNeg], 0
     
+    mov qword[clBignum], divAbs1
+    call clearbignum
+    
     ;abs(bignum2)
-    cmp qword[bignum2+24],0
+    mov rcx, qword[size]
+    cmp qword[divR+rcx],0
     jge absolut
+    
+    mov qword[clBignum], divAbs2
+    call clearbignum
+    
+    mov qword[divAbs2], 1
+    
+    mov qword[subD], divAbs1
+    mov qword[subS], divAbs2
+    call bigsub                     ;divAbs1 = -1
+
     mov qword[divNeg], 1
-    mov qword[bignum1+24], -1
-    mov qword[bignum1+16], -1
-    mov qword[bignum1+8], -1
-    mov qword[bignum1], -1
     
 absolut: 
-
+    mov qword[addD], divR
+    mov qword[addS], divAbs1
     call bigadd
     
-    mov rax, qword[bignum1]
-    xor qword[bignum2], rax
-    mov rax, qword[bignum1+8]
-    xor qword[bignum2+8], rax
-    mov rax, qword[bignum1+16]
-    xor qword[bignum2+16], rax
-    mov rax, qword[bignum1+24]
-    xor qword[bignum2+24], rax
+    mov rcx, 0
     
-    PRINT_HEX 8, bignum2+24
-    PRINT_HEX 8, bignum2+16
-    PRINT_HEX 8, bignum2+8
-    PRINT_HEX 8, bignum2
-    NEWLINE
+xorloop:
+    mov rax, qword[divAbs1+rcx]
+    xor qword[divR+rcx], rax
+    add rcx, 8
+    cmp rcx, qword[size]
+    jle xorloop
     
-    ;Stores new N
-    mov rax, qword[bignum2]
-    mov qword[divN], rax
-    mov rax, qword[bignum2+8]
-    mov qword[divN+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[divN+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[divN+24], rax
-       
-    ;compares R and D
-    mov rax, qword[divD+24]
-    cmp qword[bignum2+24], rax
-    jl enddiv
-    mov rax, qword[divD+16]
-    cmp qword[bignum2+16], rax
-    jl enddiv
-    mov rax, qword[divD+8]
-    cmp qword[bignum2+8], rax
-    jl enddiv
-    mov rax, qword[divD]
-    cmp qword[bignum2], rax
-    jl enddiv
+    ;Residue is new Numerator
+    mov qword[copyD], divNN
+    mov qword[copyS], divR
+    call copyvector
+
+    mov rcx, qword[size]
+cmploop:
+    mov rax, qword[r10+rcx]
+    cmp rax, qword[divR+rcx]
+    jg enddiv
+    jl divloop
+    sub rcx, 8
+    cmp rcx, qword[size]
+    jle cmploop    
+    
     jmp divloop
     
 enddiv:
-
-    
     cmp qword[divNeg], 0
     jz divret
     
-    mov rax, qword[bignum2]
-    mov qword[bignum1], rax
-    mov rax, qword[bignum2+8]
-    mov qword[bignum1+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[bignum1+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[bignum1+24], rax
+    mov qword[copyD], divAbs1
+    mov qword[copyS], r10
+    call copyvector
     
-    mov rax, qword[divD]
-    mov qword[bignum2], rax
-    mov rax, qword[divD+8]
-    mov qword[bignum2+8], rax
-    mov rax, qword[divD+16]
-    mov qword[bignum2+16], rax
-    mov rax, qword[divD+24]
-    mov qword[bignum2+24], rax
-    
+    mov qword[subD], divAbs1
+    mov qword[subS], divR
     call bigsub
     
-    ;Add 1 to Qc
-    mov rax, 1
-    sub qword[divQc], rax
-    mov rax, 0
-    sbb qword[divQc+8], rax
-    sbb qword[divQc+16], rax
-    sbb qword[divQc+24], rax
+    mov qword[copyD], divR
+    mov qword[copyS], divAbs1
+    call copyvector
     
+    ;Sub 1 to Qc
+    mov qword[clBignum], divAbs2
+    call clearbignum
     
+    mov qword[divAbs2], 1
+    
+    mov qword[subD], divQc
+    mov qword[subS], divAbs2
+    call bigsub
 
-    
 divret:
-
-    mov rax, qword[bignum2]
-    mov qword[bignum1], rax
-    mov rax, qword[bignum2+8]
-    mov qword[bignum1+8], rax
-    mov rax, qword[bignum2+16]
-    mov qword[bignum1+16], rax
-    mov rax, qword[bignum2+24]
-    mov qword[bignum1+24], rax
-    
-    mov rax, qword[divQc]
-    mov qword[bignum2], rax
-    mov rax, qword[divQc+8]
-    mov qword[bignum2+8], rax
-    mov rax, qword[divQc+16]
-    mov qword[bignum2+16], rax
-    mov rax, qword[divQc+24]
-    mov qword[bignum2+24], rax
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
     
     ret
     
-bigdiv2:
+bigexpmod:
+    push rcx
+    push rbx
+    push r10
+    push r11
+    push r12
     
+    mov r10, [expmodX]
+    mov r11, [expmodK]
+    mov r12, [expmodN]
+
+    mov rcx, 63                     ;register size
+    mov rbx, qword[size]
+
+    mov qword[clBignum], expmodR
+    call clearbignum
+    
+    mov qword[expmodR], 1           ;R = 1
+
+expmodloop:
+
+    
+    ;R=R*R%N
+    mov qword[mulD], expmodTR
+    mov qword[mul1], expmodR
+    mov qword[mul2], expmodR
+    call bigmul ;TR=R*R
+    
+    mov qword[copyD], expmodR
+    mov qword[copyS], expmodTR
+    call copyvector
+    
+    ;PRINT_HEX 8, expmodR+24
+    ;PRINT_HEX 8, expmodR+16
+    ;PRINT_HEX 8, expmodR+8
+    ;PRINT_HEX 8, expmodR
+    ;NEWLINE
+    
+    mov qword[divN], expmodR
+    mov qword[divD], r12
+    call bigdiv ; R=R%N
+    
+    mov qword[copyD], expmodR
+    mov qword[copyS], divR
+    call copyvector
+    
+    ;PRINT_HEX 8, expmodR+24
+    ;PRINT_HEX 8, expmodR+16
+    ;PRINT_HEX 8, expmodR+8
+    ;PRINT_HEX 8, expmodR
+    ;NEWLINE
+
+    ;Check if is 1 in bits of K
+    mov rax, 1
+    shl rax, cl
+    and rax, qword[r11+rbx]
+    cmp rax, 0
+    jz expmod0
+    
+    ;R=R*X%N
+   
+    mov qword[mulD], expmodTR
+    mov qword[mul1], expmodR
+    mov qword[mul2], r10
+    call bigmul ;R=R*X
+    
+    mov qword[copyD], expmodR
+    mov qword[copyS], expmodTR
+    call copyvector
+
+    mov qword[divN], expmodR
+    mov qword[divD], r12
+    call bigdiv ; R=R%N
+    
+    mov qword[copyD], expmodR
+    mov qword[copyS], divR
+    call copyvector
+    
+    PRINT_HEX 8, expmodR+24
+    PRINT_HEX 8, expmodR+16
+    PRINT_HEX 8, expmodR+8
+    PRINT_HEX 8, expmodR
+    NEWLINE
+    
+expmod0:
+
+    PRINT_HEX 8, expmodR+24
+    PRINT_HEX 8, expmodR+16
+    PRINT_HEX 8, expmodR+8
+    PRINT_HEX 8, expmodR
+    NEWLINE
+
+    cmp rcx, 0
+    jz expmodregdone
+    dec rcx
+    jmp expmodloop
+    
+expmodregdone:
+    cmp rbx, 0
+    jz expmodend
+    sub rbx, 8
+    mov rcx, 63
+    jmp expmodloop
+    
+expmodend:
+    pop r12
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
+    ret
+
     
