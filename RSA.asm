@@ -9,14 +9,17 @@ section	.data
     bignum2     dq      4, 3, 7, 8, 0, 0, 0, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
     mulr        dq      3, 5, 1, 0, 0, 0, 0, 0 ;000000000000000
     
-    test1       dq      0xed7fb5a6961790f1, 0x2, 0, 0, 0, 0, 0, 0
-    test2       dq      3, 1, 0, 0, 0, 0, 0, 0
+    test1       dq      0x9fd6191ae392460b, 0x539d4814075a4e29, 0, 0, 0, 0, 0, 0
+    test2       dq      3, 5, 1, 0, 0, 0, 0, 0
     test3       dq      0, 0, 0, 0, 0, 0, 0, 0
     
     expmod      dq      0
     
     size        dq      56
     
+    
+    
+
     
 section .bss
     clBignum    resq    1
@@ -38,7 +41,7 @@ section .bss
     copyS       resq    1
 
     divD        resq    1           ;Denominator pointer
-    divN        resq    1           ;Numerator pinter
+    divN        resq    1           ;Numerator pointer
     divQ        resq    8           ;Quotient vector
     divR        resq    8           ;Residue vector
     divQpiv     resq    8           ;Vector to pivot Q for shifting
@@ -46,7 +49,6 @@ section .bss
     divM        resq    1           ;Magnitude
     divNN       resq    8           ;Changing Numerator vector
     divNeg      resq    1           ;Flag if residue is negative
-    divNo       resq    1
     divQD       resq    8
     divAbs1     resq    8
     divAbs2     resq    8
@@ -64,27 +66,7 @@ section .text
 CMAIN:
     mov rbp, rsp; for correct debugging
     
-    mov qword[expmodX], bignum1
-    mov qword[expmodK], bignum2
-    mov qword[expmodN], mulr
-    call bigexpmod
-    
-    PRINT_HEX 8, expmodR+56
-    NEWLINE
-    PRINT_HEX 8, expmodR+48
-    NEWLINE
-    PRINT_HEX 8, expmodR+40
-    NEWLINE
-    PRINT_HEX 8, expmodR+32
-    NEWLINE
-    PRINT_HEX 8, expmodR+24
-    NEWLINE
-    PRINT_HEX 8, expmodR+16
-    NEWLINE
-    PRINT_HEX 8, expmodR+8
-    NEWLINE
-    PRINT_HEX 8, expmodR
-    NEWLINE
+
     
     mov qword[mulD], test3
     mov qword[mul1], test1
@@ -283,7 +265,7 @@ bigmullimit:
     ;Check is rcx+rbx is less that the size
     cmp rcx, qword[size]
     pop rcx
-    je bigmullimit2
+    jg bigmullimit2
     add rbx, 8
     jmp bigmulloop
     
@@ -476,18 +458,19 @@ xorloop:
     add rcx, 8
     cmp rcx, qword[size]
     jle xorloop
-    
+
     ;Residue is new Numerator
     mov qword[copyD], divNN
     mov qword[copyS], divR
     call copyvector
 
+    ;Compare R and D
     mov rcx, qword[size]
 cmploop:
     mov rax, qword[r10+rcx]
     cmp rax, qword[divR+rcx]
-    jg enddiv
-    jl divloop
+    ja enddiv
+    jb divloop
     sub rcx, 8
     cmp rcx, qword[size]
     jle cmploop    
