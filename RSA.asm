@@ -9,15 +9,13 @@ section	.data
     bignum2     dq      4, 3, 7, 8, 0, 0, 0, 0;0xFFFFFFFFFFFFFFCF, 0xFFFDFFFFFFFFFFFF, 0, 0
     mulr        dq      3, 5, 1, 0, 0, 0, 0, 0 ;000000000000000
     
-    test1       dq      0x9fd6191ae392460b, 0x539d4814075a4e29, 0, 0, 0, 0, 0, 0
-    test2       dq      3, 5, 1, 0, 0, 0, 0, 0
+    test1       dq      0xb156417916e1e4f0, 0xa50cdee044df1477, 0x25ed80aa5309fbb3, 0x836d3216ab4a39ff, 0, 0, 0, 0
+    test2       dq      0x5c03e2b112db4323, 0xd1a822a45031eff0, 0x54ddcf03c0f9bf76, 0x6790baae4922c913, 0, 0, 0, 0
     test3       dq      0, 0, 0, 0, 0, 0, 0, 0
     
     expmod      dq      0
     
     size        dq      56
-    
-    
     
 
     
@@ -58,6 +56,18 @@ section .bss
     expmodN     resq    1
     expmodR     resq    8
     expmodTR    resq    8
+    
+    modinvE     resq    1
+    modinvL     resq    1
+    modinvU1    resq    8
+    modinvU3    resq    8
+    modinvV1    resq    8
+    modinvV3    resq    8
+    modinvT1    resq    8
+    modinvT3    resq    8
+    modinvQ     resq    8
+    modinvR     resq    8
+    
 
 
 section .text
@@ -66,60 +76,26 @@ section .text
 CMAIN:
     mov rbp, rsp; for correct debugging
     
-
     
-    mov qword[mulD], test3
-    mov qword[mul1], test1
-    mov qword[mul2], test1
-    call bigmul
+    mov qword[modinvE], test2
+    mov qword[modinvL], test1
+    call modinv
     
-    mov qword[copyD], test1
-    mov qword[copyS], test3
-    call copyvector
-    
-    PRINT_HEX 8, test1+24
-    PRINT_HEX 8, test1+16
-    PRINT_HEX 8, test1+8
-    PRINT_HEX 8, test1
+    PRINT_HEX 8, modinvR+56
     NEWLINE
-    
-    mov qword[divN], test1
-    mov qword[divD], test2
-    call bigdiv
-    
-    PRINT_HEX 8, divQc+24
-    PRINT_HEX 8, divQc+16
-    PRINT_HEX 8, divQc+8
-    PRINT_HEX 8, divQc
+    PRINT_HEX 8, modinvR+48
     NEWLINE
-    
-    PRINT_HEX 8, divR+24
-    PRINT_HEX 8, divR+16
-    PRINT_HEX 8, divR+8
-    PRINT_HEX 8, divR
+    PRINT_HEX 8, modinvR+40
     NEWLINE
-    
-    
-    mov qword[expmodX], bignum1
-    mov qword[expmodK], bignum2
-    mov qword[expmodN], mulr
-    call bigexpmod
-    
-    PRINT_HEX 8, expmodR+56
+    PRINT_HEX 8, modinvR+32
     NEWLINE
-    PRINT_HEX 8, expmodR+48
+    PRINT_HEX 8, modinvR+24
     NEWLINE
-    PRINT_HEX 8, expmodR+40
+    PRINT_HEX 8, modinvR+16
     NEWLINE
-    PRINT_HEX 8, expmodR+32
+    PRINT_HEX 8, modinvR+8
     NEWLINE
-    PRINT_HEX 8, expmodR+24
-    NEWLINE
-    PRINT_HEX 8, expmodR+16
-    NEWLINE
-    PRINT_HEX 8, expmodR+8
-    NEWLINE
-    PRINT_HEX 8, expmodR
+    PRINT_HEX 8, modinvR
     NEWLINE
     
     call exit
@@ -622,5 +598,122 @@ expmodend:
     pop rbx
     pop rcx
     ret
+    
+    
+modinv:
+    push rcx
+    push rbx
+    push r10
+    push r11
+    
+    mov r10, [modinvE]
+    mov r11, [modinvL]
+    
+    mov qword[clBignum], modinvU1
+    call clearbignum
+    mov qword[modinvU1], 1
+    
+    mov qword[clBignum], modinvV1
+    call clearbignum
+    
+    mov qword[clBignum], modinvR
+    call clearbignum
+    
+    mov qword[copyD], modinvU3
+    mov qword[copyS], r10
+    call copyvector
+    
+    mov qword[copyD], modinvV3
+    mov qword[copyS], r11
+    call copyvector
+    
+    mov rcx, 1
+    
+modinvloop:
+    mov qword[divN], modinvU3
+    mov qword[divD], modinvV3
+    call bigdiv
+    
+    mov qword[copyD], modinvQ
+    mov qword[copyS], divQc
+    call copyvector
+    
+    mov qword[copyD], modinvT3
+    mov qword[copyS], divR
+    call copyvector
+    
+    mov qword[mulD], modinvT1
+    mov qword[mul1], modinvQ
+    mov qword[mul2], modinvV1
+    call bigmul
+    
+    mov qword[addD], modinvT1
+    mov qword[addS], modinvU1
+    call bigadd
+    
+    mov qword[copyD], modinvU1
+    mov qword[copyS], modinvV1
+    call copyvector
+    
+    mov qword[copyD], modinvV1
+    mov qword[copyS], modinvT1
+    call copyvector
+    
+    mov qword[copyD], modinvU3
+    mov qword[copyS], modinvV3
+    call copyvector
+    
+    mov qword[copyD], modinvV3
+    mov qword[copyS], modinvT3
+    call copyvector
+    
+    dec rcx
+    mov rbx, qword[size]
+    
+modinvcmp:  ;Compare if V3 != 0
+    cmp qword[modinvV3+rbx], 0
+    jne modinvloop
+    sub rbx, 8
+    cmp rbx, 0
+    jge modinvcmp
+    
+    
+    ;Compare if U3 != 0
+    cmp qword[modinvU3], 1
+    jne modinvret
+    mov rbx, qword[size]
+    
+modinvcmp2:
+    cmp qword[modinvU3+rbx], 0
+    jne modinvret
+    sub rbx, 8
+    cmp rbx, 8              ;Compare to 8 because 0 is compared above
+    jge modinvcmp2
+    
+    cmp rcx, 0
+    jl modinvless
+    
+    mov qword[copyD], modinvR
+    mov qword[copyS], modinvU1
+    call copyvector
+    jmp modinvret
+    
+modinvless:
+    mov qword[copyD], modinvR
+    mov qword[copyS], r11
+    call copyvector
+    
+    mov qword[subD], modinvR
+    mov qword[subS], modinvU1
+    call bigsub
+    
+modinvret:
+    pop r11
+    pop r10
+    pop rbx
+    pop rcx
+    ret
+    
+    
 
     
