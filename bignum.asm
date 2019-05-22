@@ -759,7 +759,7 @@ coprime:
     mov rcx, qword[size]
     
     ;Adds 0 to the MSBs to make less than L
-    mov qword[coprimeR+rcx], 0
+    shr qword[coprimeR+rcx], 16
     
 coprimeloop2:
     mov qword[gcdA], coprimeR
